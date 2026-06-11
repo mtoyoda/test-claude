@@ -1,0 +1,127 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no">
+<title>Force Graph — WebGL Interactive Graph Viewer</title>
+<style>
+  html, body {
+    margin: 0;
+    padding: 0;
+    width: 100%;
+    height: 100%;
+    overflow: hidden;
+    background: #0b0e14;
+    color: #cdd6e4;
+    font-family: "Helvetica Neue", Arial, "Hiragino Kaku Gothic ProN", Meiryo, sans-serif;
+  }
+  #canvas {
+    position: fixed;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    display: block;
+    cursor: grab;
+    touch-action: none;
+  }
+  #canvas.panning { cursor: grabbing; }
+  #canvas.node-hover { cursor: pointer; }
+  #panel {
+    position: fixed;
+    top: 12px;
+    left: 12px;
+    background: rgba(16, 21, 32, 0.88);
+    border: 1px solid rgba(120, 150, 200, 0.25);
+    border-radius: 10px;
+    padding: 12px 14px;
+    font-size: 12px;
+    line-height: 1.6;
+    max-width: 320px;
+    backdrop-filter: blur(6px);
+    user-select: none;
+  }
+  #panel h1 {
+    margin: 0 0 6px;
+    font-size: 14px;
+    font-weight: 600;
+    color: #e8eefb;
+  }
+  #stats { white-space: pre-line; color: #9fb0c9; }
+  #status { color: #ffd479; margin-top: 4px; }
+  #status.error { color: #ff8a80; }
+  #panel button {
+    margin: 8px 6px 0 0;
+    padding: 4px 10px;
+    font-size: 12px;
+    color: #dbe6f7;
+    background: #233048;
+    border: 1px solid rgba(120, 150, 200, 0.35);
+    border-radius: 6px;
+    cursor: pointer;
+  }
+  #panel button:hover { background: #2e405f; }
+  #panel details { margin-top: 8px; color: #8fa1bd; }
+  #panel details summary { cursor: pointer; }
+  #panel code {
+    background: #1a2233;
+    padding: 1px 4px;
+    border-radius: 4px;
+    font-size: 11px;
+  }
+  #panel pre {
+    background: #1a2233;
+    padding: 8px;
+    border-radius: 6px;
+    font-size: 11px;
+    overflow-x: auto;
+    user-select: text;
+  }
+  #tooltip {
+    position: fixed;
+    display: none;
+    pointer-events: none;
+    background: rgba(20, 26, 40, 0.95);
+    border: 1px solid rgba(140, 170, 220, 0.45);
+    border-radius: 6px;
+    padding: 4px 9px;
+    font-size: 12px;
+    color: #f0f5ff;
+    z-index: 10;
+    max-width: 320px;
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.5);
+  }
+</style>
+</head>
+<body>
+<canvas id="canvas"></canvas>
+
+<div id="panel">
+  <h1>Force Graph (WebGL)</h1>
+  <div id="stats">読み込み中…</div>
+  <div id="status"></div>
+  <button id="reheat">再レイアウト</button>
+  <button id="fit">全体表示</button>
+  <details>
+    <summary>使い方 / グラフの指定</summary>
+    <p>
+      ドラッグ: 視点移動 / ノードをドラッグ: ノード移動<br>
+      ホイール: ズーム / ノードにマウスオーバー: ラベル表示
+    </p>
+    <p>
+      URLパラメータ:<br>
+      <code>?graph=&lt;JSONのURL&gt;</code> — グラフを読み込み<br>
+      <code>?n=10000&amp;k=6&amp;p=0.1</code> — 生成グラフのサイズ等
+    </p>
+    <p>JSONフォーマット:</p>
+    <pre>{
+  "nodes": ["a", {"id":"b","label":"Bob"}],
+  "edges": [["a","b"]]
+}</pre>
+  </details>
+</div>
+
+<div id="tooltip"></div>
+
+<script src="main.js"></script>
+</body>
+</html>

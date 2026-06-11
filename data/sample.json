@@ -1,0 +1,34 @@
+{
+  "nodes": [
+    {"id": "alice",  "label": "Alice"},
+    {"id": "bob",    "label": "Bob"},
+    {"id": "carol",  "label": "Carol"},
+    {"id": "dave",   "label": "Dave"},
+    {"id": "eve",    "label": "Eve"},
+    {"id": "frank",  "label": "Frank"},
+    {"id": "grace",  "label": "Grace"},
+    {"id": "heidi",  "label": "Heidi"},
+    {"id": "ivan",   "label": "Ivan"},
+    {"id": "judy",   "label": "Judy"},
+    {"id": "mallory","label": "Mallory"},
+    {"id": "oscar",  "label": "Oscar"}
+  ],
+  "edges": [
+    ["alice", "bob"],
+    ["alice", "carol"],
+    ["alice", "dave"],
+    ["bob", "carol"],
+    ["carol", "dave"],
+    ["dave", "eve"],
+    ["eve", "frank"],
+    ["eve", "grace"],
+    ["frank", "grace"],
+    ["grace", "heidi"],
+    ["heidi", "ivan"],
+    ["heidi", "judy"],
+    ["ivan", "judy"],
+    ["judy", "mallory"],
+    ["mallory", "oscar"],
+    ["oscar", "alice"]
+  ]
+}
