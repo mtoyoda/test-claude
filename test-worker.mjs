@@ -58,7 +58,18 @@ const px0 = lastTick.positions[0], py0 = lastTick.positions[1];
 console.log(`pinned node at (${px0.toFixed(0)}, ${py0.toFixed(0)}), alpha=${lastTick.alpha.toFixed(3)}`);
 send({ type: 'unpin', i: 0 });
 
+// params test: tuning forces must reheat the simulation and keep it stable
+send({ type: 'params', params: { linkDistance: 60, repulsion: -80, velocityDecay: 0.4 } });
+await new Promise((r) => setTimeout(r, 500));
+let badAfterParams = 0;
+for (let i = 0; i < n * 2; i++) {
+  if (!Number.isFinite(lastTick.positions[i])) badAfterParams++;
+}
+console.log(`after params: alpha=${lastTick.alpha.toFixed(3)} non-finite=${badAfterParams}`);
+
 const ok = bad === 0
+  && badAfterParams === 0
+  && lastTick.alpha > 0.05
   && maxX - minX > 50
   && avgLen > 5 && avgLen < 200
   && Math.abs(px0 - 6000) < 1 && Math.abs(py0 - 6000) < 1;

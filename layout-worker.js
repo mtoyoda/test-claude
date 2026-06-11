@@ -16,6 +16,7 @@
  *   {type:'drag',  i, x, y}                          move dragged node
  *   {type:'unpin', i}                                release node
  *   {type:'reheat'}                                  restart cooling from warm
+ *   {type:'params', params:{...}}                    tune the forces (see P)
  *
  * Messages out:
  *   {type:'tick', positions: Float32Array(2N), alpha}   (positions transferred)
@@ -23,12 +24,16 @@
 'use strict';
 
 // ---- simulation parameters -------------------------------------------------
-const LINK_DISTANCE = 30;
-const REPULSION = -30;          // many-body strength (negative = repel)
+// Tunable at runtime via the 'params' message.
+const P = {
+  linkDistance: 30,
+  repulsion: -30,         // many-body strength (negative = repel)
+  centerStrength: 0.03,
+  velocityDecay: 0.6,
+  linkStrength: 1,        // multiplier on the per-edge degree-based strength
+};
 const THETA2 = 0.81;            // Barnes-Hut accuracy (theta^2)
 const DIST_MIN2 = 1;            // clamp for repulsion singularity
-const CENTER_STRENGTH = 0.03;
-const VELOCITY_DECAY = 0.6;
 const ALPHA_MIN = 0.001;
 const ALPHA_DECAY = 1 - Math.pow(ALPHA_MIN, 1 / 500);
 const TICK_INTERVAL = 16;       // ms, target simulation rate
@@ -131,7 +136,7 @@ function insertPoint(i) {
 // ---- forces ------------------------------------------------------------------
 function applyRepulsion() {
   buildTree();
-  const k = REPULSION * alpha;
+  const k = P.repulsion * alpha;
   for (let i = 0; i < N; i++) {
     const xi = px[i], yi = py[i];
     let fxi = 0, fyi = 0;
@@ -181,7 +186,7 @@ function applyLinks() {
       dy = (Math.random() - 0.5) * 1e-3;
     }
     const d = Math.sqrt(dx * dx + dy * dy);
-    const l = (d - LINK_DISTANCE) / d * alpha * lStrength[e];
+    const l = (d - P.linkDistance) / d * alpha * lStrength[e] * P.linkStrength;
     dx *= l; dy *= l;
     const b = lBias[e];
     vx[t] -= dx * b;       vy[t] -= dy * b;
@@ -193,7 +198,7 @@ function step() {
   alpha += (alphaTarget - alpha) * ALPHA_DECAY;
   applyLinks();
   applyRepulsion();
-  const g = CENTER_STRENGTH * alpha;
+  const g = P.centerStrength * alpha;
   for (let i = 0; i < N; i++) {
     vx[i] -= px[i] * g;
     vy[i] -= py[i] * g;
@@ -204,8 +209,8 @@ function step() {
       vx[i] = 0; vy[i] = 0;
       continue;
     }
-    vx[i] *= VELOCITY_DECAY;
-    vy[i] *= VELOCITY_DECAY;
+    vx[i] *= P.velocityDecay;
+    vy[i] *= P.velocityDecay;
     px[i] += vx[i];
     py[i] += vy[i];
   }
@@ -304,6 +309,13 @@ self.onmessage = (ev) => {
       break;
     case 'reheat':
       alpha = Math.max(alpha, 0.5);
+      start();
+      break;
+    case 'params':
+      for (const k in m.params) {
+        if (k in P && Number.isFinite(m.params[k])) P[k] = m.params[k];
+      }
+      alpha = Math.max(alpha, 0.3); // warm up so changes take effect visibly
       start();
       break;
   }

@@ -299,6 +299,39 @@ document.getElementById('fit').addEventListener('click', () => {
   autoFit = true;
 });
 
+// ------------------------------------------------------- layout parameter UI
+// Slider ids are p-<key>; the repulsion slider holds the magnitude and is
+// negated before being sent to the worker.
+const PARAM_DEFS = [
+  { key: 'linkDistance',   digits: 0 },
+  { key: 'repulsion',      digits: 0, toWorker: (v) => -v },
+  { key: 'centerStrength', digits: 3 },
+  { key: 'velocityDecay',  digits: 2 },
+  { key: 'linkStrength',   digits: 2 },
+];
+
+function sendParams() {
+  const out = {};
+  for (const d of PARAM_DEFS) {
+    const v = parseFloat(d.input.value);
+    d.valueEl.textContent = v.toFixed(d.digits);
+    out[d.key] = d.toWorker ? d.toWorker(v) : v;
+  }
+  worker.postMessage({ type: 'params', params: out });
+}
+
+for (const d of PARAM_DEFS) {
+  d.input = document.getElementById('p-' + d.key);
+  d.valueEl = document.getElementById('v-' + d.key);
+  d.valueEl.textContent = parseFloat(d.input.value).toFixed(d.digits);
+  d.input.addEventListener('input', sendParams);
+}
+
+document.getElementById('resetParams').addEventListener('click', () => {
+  for (const d of PARAM_DEFS) d.input.value = d.input.defaultValue;
+  sendParams();
+});
+
 // ---------------------------------------------------------------- rendering
 function resize() {
   const dpr = window.devicePixelRatio || 1;

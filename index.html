@@ -62,6 +62,18 @@
   #panel button:hover { background: #2e405f; }
   #panel details { margin-top: 8px; color: #8fa1bd; }
   #panel details summary { cursor: pointer; }
+  .param { margin: 6px 0 2px; }
+  .param label {
+    display: flex;
+    justify-content: space-between;
+    color: #9fb0c9;
+  }
+  .param .value { color: #dbe6f7; font-variant-numeric: tabular-nums; }
+  .param input[type="range"] {
+    width: 100%;
+    margin: 2px 0 0;
+    accent-color: #4ea1ff;
+  }
   #panel code {
     background: #1a2233;
     padding: 1px 4px;
@@ -101,6 +113,30 @@
   <div id="status"></div>
   <button id="reheat">再レイアウト</button>
   <button id="fit">全体表示</button>
+  <details id="paramBox" open>
+    <summary>レイアウトパラメータ</summary>
+    <div class="param">
+      <label>リンク距離 <span class="value" id="v-linkDistance"></span></label>
+      <input type="range" id="p-linkDistance" min="5" max="150" step="1" value="30">
+    </div>
+    <div class="param">
+      <label>反発力 <span class="value" id="v-repulsion"></span></label>
+      <input type="range" id="p-repulsion" min="0" max="200" step="1" value="30">
+    </div>
+    <div class="param">
+      <label>中心引力 <span class="value" id="v-centerStrength"></span></label>
+      <input type="range" id="p-centerStrength" min="0" max="0.2" step="0.005" value="0.03">
+    </div>
+    <div class="param">
+      <label>慣性(速度減衰係数) <span class="value" id="v-velocityDecay"></span></label>
+      <input type="range" id="p-velocityDecay" min="0.1" max="0.95" step="0.01" value="0.6">
+    </div>
+    <div class="param">
+      <label>リンク強度 <span class="value" id="v-linkStrength"></span></label>
+      <input type="range" id="p-linkStrength" min="0" max="2" step="0.05" value="1">
+    </div>
+    <button id="resetParams">初期値に戻す</button>
+  </details>
   <details>
     <summary>使い方 / グラフの指定</summary>
     <p>
