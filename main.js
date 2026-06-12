@@ -42,6 +42,8 @@ if (!gl) {
 
 const VS = `
 attribute vec2 aPos;
+attribute vec3 aColor;
+varying vec3 vColor;
 uniform vec2 uCenter;
 uniform float uScale;
 uniform vec2 uViewport;
@@ -50,17 +52,18 @@ void main() {
   vec2 p = (aPos - uCenter) * uScale;
   gl_Position = vec4(2.0 * p.x / uViewport.x, -2.0 * p.y / uViewport.y, 0.0, 1.0);
   gl_PointSize = uPointSize;
+  vColor = aColor;
 }`;
 
 const NODE_FS = `
 precision mediump float;
-uniform vec4 uColor;
+varying vec3 vColor;
 void main() {
   vec2 c = gl_PointCoord * 2.0 - 1.0;
   float r2 = dot(c, c);
   if (r2 > 1.0) discard;
   float a = 1.0 - smoothstep(0.7, 1.0, r2);
-  gl_FragColor = vec4(uColor.rgb, uColor.a * a);
+  gl_FragColor = vec4(vColor, 0.95 * a);
 }`;
 
 const EDGE_FS = `
@@ -89,6 +92,7 @@ function makeProgram(fsSrc) {
   return {
     prog: p,
     aPos: gl.getAttribLocation(p, 'aPos'),
+    aColor: gl.getAttribLocation(p, 'aColor'),
     uCenter: gl.getUniformLocation(p, 'uCenter'),
     uScale: gl.getUniformLocation(p, 'uScale'),
     uViewport: gl.getUniformLocation(p, 'uViewport'),
@@ -101,6 +105,7 @@ const nodeProg = makeProgram(NODE_FS);
 const edgeProg = makeProgram(EDGE_FS);
 
 const posBuf = gl.createBuffer();
+const colorBuf = gl.createBuffer();
 const edgeIdxBuf = gl.createBuffer();
 const highlightBuf = gl.createBuffer();
 gl.bindBuffer(gl.ARRAY_BUFFER, highlightBuf);
@@ -359,6 +364,126 @@ function applyModel() {
 }
 modelSel.addEventListener('change', applyModel);
 
+// ------------------------------------------------------- graph generator menu
+const GEN_DEFS = {
+  smallworld: {
+    name: 'スモールワールド (Watts–Strogatz)',
+    params: [
+      { key: 'n', label: 'ノード数 n', def: 1000, min: 2, max: 200000, step: 1 },
+      { key: 'k', label: '平均次数 k', def: 6, min: 2, max: 100, step: 2 },
+      { key: 'p', label: '再配線率 p', def: 0.1, min: 0, max: 1, step: 0.01 },
+    ],
+    make: (q) => GraphGen.smallWorld(q.n, q.k, q.p),
+  },
+  ba: {
+    name: 'スケールフリー (Barabási–Albert)',
+    params: [
+      { key: 'n', label: 'ノード数 n', def: 1000, min: 2, max: 200000, step: 1 },
+      { key: 'm', label: '接続エッジ数 m', def: 3, min: 1, max: 20, step: 1 },
+    ],
+    make: (q) => GraphGen.barabasiAlbert(q.n, q.m),
+  },
+  sbm: {
+    name: 'クラスタ構造 (確率的ブロックモデル)',
+    params: [
+      { key: 'n', label: 'ノード数 n', def: 1000, min: 4, max: 200000, step: 1 },
+      { key: 'c', label: 'クラスタ数 c', def: 8, min: 2, max: 100, step: 1 },
+      { key: 'kin', label: 'クラスタ内平均次数', def: 8, min: 0, max: 100, step: 0.5 },
+      { key: 'kout', label: 'クラスタ間平均次数', def: 1, min: 0, max: 100, step: 0.1 },
+    ],
+    make: (q) => GraphGen.sbm(q.n, q.c, q.kin, q.kout),
+  },
+  er: {
+    name: 'ランダム (Erdős–Rényi)',
+    params: [
+      { key: 'n', label: 'ノード数 n', def: 1000, min: 2, max: 200000, step: 1 },
+      { key: 'k', label: '平均次数 k', def: 6, min: 0, max: 100, step: 0.5 },
+    ],
+    make: (q) => GraphGen.erdosRenyi(q.n, q.k),
+  },
+  grid: {
+    name: '2次元格子',
+    params: [
+      { key: 'n', label: 'ノード数 n (平方数に丸め)', def: 1024, min: 4, max: 200000, step: 1 },
+    ],
+    make: (q) => GraphGen.grid(q.n),
+  },
+};
+
+const genSel = document.getElementById('genType');
+const genParamsEl = document.getElementById('genParams');
+for (const [id, def] of Object.entries(GEN_DEFS)) {
+  const opt = document.createElement('option');
+  opt.value = id;
+  opt.textContent = def.name;
+  genSel.appendChild(opt);
+}
+{
+  const g = params.get('gen');
+  if (g && GEN_DEFS[g]) genSel.value = g;
+}
+
+function urlNum(name) {
+  const v = parseFloat(params.get(name));
+  return Number.isFinite(v) ? v : null;
+}
+
+function buildGenParamInputs() {
+  genParamsEl.innerHTML = '';
+  for (const p of GEN_DEFS[genSel.value].params) {
+    const row = document.createElement('div');
+    row.className = 'param';
+    const label = document.createElement('label');
+    label.textContent = p.label;
+    const input = document.createElement('input');
+    input.type = 'number';
+    input.id = 'g-' + p.key;
+    input.min = p.min;
+    input.max = p.max;
+    input.step = p.step;
+    const fromUrl = urlNum(p.key);
+    input.value = fromUrl !== null
+      ? Math.min(Math.max(fromUrl, p.min), p.max)
+      : p.def;
+    row.appendChild(label);
+    row.appendChild(input);
+    genParamsEl.appendChild(row);
+  }
+}
+genSel.addEventListener('change', buildGenParamInputs);
+buildGenParamInputs();
+
+function readGenParams() {
+  const def = GEN_DEFS[genSel.value];
+  const q = {};
+  for (const p of def.params) {
+    let v = parseFloat(document.getElementById('g-' + p.key).value);
+    if (!Number.isFinite(v)) v = p.def;
+    v = Math.min(Math.max(v, p.min), p.max);
+    if (p.step >= 1) v = Math.round(v);
+    q[p.key] = v;
+  }
+  return q;
+}
+
+function generateGraph() {
+  const def = GEN_DEFS[genSel.value];
+  const q = readGenParams();
+  const desc = Object.entries(q).map(([k, v]) => `${k}=${v}`).join(', ');
+  setStatus(`${def.name} を生成 (${desc})`);
+  return def.make(q);
+}
+
+document.getElementById('generate').addEventListener('click', () => {
+  setGraph(generateGraph());
+  // make the current generator state shareable via the URL
+  const sp = new URLSearchParams();
+  sp.set('gen', genSel.value);
+  for (const [k, v] of Object.entries(readGenParams())) sp.set(k, v);
+  if (modelSel.value !== 'spring') sp.set('model', modelSel.value);
+  history.replaceState(null, '', '?' + sp.toString());
+});
+
 // ---------------------------------------------------------------- rendering
 function resize() {
   const dpr = window.devicePixelRatio || 1;
@@ -414,11 +539,13 @@ function render() {
     const r = nodeScreenRadius();
     gl.useProgram(nodeProg.prog);
     setCommonUniforms(nodeProg, r * 2);
-    gl.uniform4f(nodeProg.uColor, 0.31, 0.63, 1.0, 0.95);
     bindPositions(nodeProg, posBuf);
+    gl.bindBuffer(gl.ARRAY_BUFFER, colorBuf);
+    gl.enableVertexAttribArray(nodeProg.aColor);
+    gl.vertexAttribPointer(nodeProg.aColor, 3, gl.FLOAT, false, 0, 0);
     gl.drawArrays(gl.POINTS, 0, N);
 
-    // hovered / dragged highlight
+    // hovered / dragged highlight (constant yellow via disabled color attrib)
     const hi = dragged >= 0 ? dragged : hovered;
     if (hi >= 0 && hi < N) {
       gl.bindBuffer(gl.ARRAY_BUFFER, highlightBuf);
@@ -426,7 +553,8 @@ function render() {
         new Float32Array([positions[hi * 2], positions[hi * 2 + 1]]),
         gl.DYNAMIC_DRAW);
       setCommonUniforms(nodeProg, r * 2 + 7);
-      gl.uniform4f(nodeProg.uColor, 1.0, 0.83, 0.3, 1.0);
+      gl.disableVertexAttribArray(nodeProg.aColor);
+      gl.vertexAttrib3f(nodeProg.aColor, 1.0, 0.83, 0.3);
       bindPositions(nodeProg, highlightBuf);
       gl.drawArrays(gl.POINTS, 0, 1);
     }
@@ -471,48 +599,18 @@ function setGraph(g) {
   gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, edgeIdxBuf);
   gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, indices, gl.STATIC_DRAW);
 
-  worker.postMessage({ type: 'graph', n: N, edges: g.edges });
-}
+  // per-node colors (cluster/group coloring); default steel blue
+  let colors = g.colors;
+  if (!colors || colors.length !== N * 3) {
+    colors = new Float32Array(N * 3);
+    for (let i = 0; i < N; i++) {
+      colors[i * 3] = 0.31; colors[i * 3 + 1] = 0.63; colors[i * 3 + 2] = 1.0;
+    }
+  }
+  gl.bindBuffer(gl.ARRAY_BUFFER, colorBuf);
+  gl.bufferData(gl.ARRAY_BUFFER, colors, gl.STATIC_DRAW);
 
-// Watts-Strogatz small-world network
-function smallWorld(n, k, p) {
-  const half = Math.max(1, k >> 1);
-  const key = (a, b) => (a < b ? a * n + b : b * n + a);
-  const edgeSet = new Set();
-  const src = [], dst = [];
-  for (let i = 0; i < n; i++) {
-    for (let j = 1; j <= half; j++) {
-      const t = (i + j) % n;
-      if (i === t) continue;
-      const kk = key(i, t);
-      if (!edgeSet.has(kk)) {
-        edgeSet.add(kk);
-        src.push(i);
-        dst.push(t);
-      }
-    }
-  }
-  for (let e = 0; e < src.length; e++) {
-    if (Math.random() >= p) continue;
-    const s = src[e];
-    for (let attempt = 0; attempt < 20; attempt++) {
-      const t = Math.floor(Math.random() * n);
-      const kk = key(s, t);
-      if (t === s || edgeSet.has(kk)) continue;
-      edgeSet.delete(key(s, dst[e]));
-      edgeSet.add(kk);
-      dst[e] = t;
-      break;
-    }
-  }
-  const edges = new Uint32Array(src.length * 2);
-  const labels = new Array(n);
-  for (let i = 0; i < n; i++) labels[i] = 'node-' + i;
-  for (let e = 0; e < src.length; e++) {
-    edges[e * 2] = src[e];
-    edges[e * 2 + 1] = dst[e];
-  }
-  return { labels, edges };
+  worker.postMessage({ type: 'graph', n: N, edges: g.edges });
 }
 
 /*
@@ -533,22 +631,24 @@ function parseGraph(json) {
 
   const idToIndex = new Map();
   const labels = [];
+  const groups = [];
   const explicitNodes = nodesIn.length > 0;
 
-  function addNode(id, label) {
+  function addNode(id, label, group) {
     const k = String(id);
     let idx = idToIndex.get(k);
     if (idx === undefined) {
       idx = labels.length;
       idToIndex.set(k, idx);
       labels.push(label != null ? String(label) : k);
+      groups.push(group != null ? String(group) : null);
     }
     return idx;
   }
 
   for (const nd of nodesIn) {
     if (nd !== null && typeof nd === 'object') {
-      addNode(nd.id != null ? nd.id : labels.length, nd.label);
+      addNode(nd.id != null ? nd.id : labels.length, nd.label, nd.group);
     } else {
       addNode(nd);
     }
@@ -587,27 +687,22 @@ function parseGraph(json) {
     edges[e * 2] = src[e];
     edges[e * 2 + 1] = dst[e];
   }
-  return { labels, edges };
-}
 
-function intParam(name, def, min, max) {
-  const v = parseInt(params.get(name), 10);
-  if (!Number.isFinite(v)) return def;
-  return Math.min(Math.max(v, min), max);
-}
-
-function floatParam(name, def, min, max) {
-  const v = parseFloat(params.get(name));
-  if (!Number.isFinite(v)) return def;
-  return Math.min(Math.max(v, min), max);
-}
-
-function generateDefault() {
-  const n = intParam('n', 1000, 2, 2000000);
-  const k = intParam('k', 6, 2, 100);
-  const p = floatParam('p', 0.1, 0, 1);
-  setStatus(`スモールワールドネットワークを生成 (n=${n}, k=${k}, p=${p})`);
-  return smallWorld(n, k, p);
+  // optional "group" field on nodes -> cluster coloring
+  let colors = null;
+  if (groups.some((g) => g !== null)) {
+    const groupIdx = new Map();
+    colors = new Float32Array(labels.length * 3);
+    for (let i = 0; i < labels.length; i++) {
+      let rgb = [0.31, 0.63, 1.0];
+      if (groups[i] !== null) {
+        if (!groupIdx.has(groups[i])) groupIdx.set(groups[i], groupIdx.size);
+        rgb = GraphGen.palette(groupIdx.get(groups[i]));
+      }
+      colors[i * 3] = rgb[0]; colors[i * 3 + 1] = rgb[1]; colors[i * 3 + 2] = rgb[2];
+    }
+  }
+  return { labels, edges, colors };
 }
 
 async function init() {
@@ -622,10 +717,10 @@ async function init() {
       setStatus(`読み込み完了: ${url}`);
     } catch (err) {
       setStatus(`グラフを読み込めませんでした (${err.message})。代わりに生成グラフを表示します。`, true);
-      g = generateDefault();
+      g = generateGraph();
     }
   } else {
-    g = generateDefault();
+    g = generateGraph();
   }
   setGraph(g);
   applyModel(); // reflect ?model= and initial slider availability
