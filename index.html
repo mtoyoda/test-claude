@@ -74,6 +74,17 @@
     margin: 2px 0 0;
     accent-color: #4ea1ff;
   }
+  .param.disabled { opacity: 0.4; }
+  #model {
+    width: 100%;
+    margin: 2px 0 6px;
+    padding: 3px 6px;
+    font-size: 12px;
+    color: #dbe6f7;
+    background: #1a2233;
+    border: 1px solid rgba(120, 150, 200, 0.35);
+    border-radius: 6px;
+  }
   #panel code {
     background: #1a2233;
     padding: 1px 4px;
@@ -115,6 +126,16 @@
   <button id="fit">全体表示</button>
   <details id="paramBox" open>
     <summary>レイアウトパラメータ</summary>
+    <div class="param">
+      <label for="model">レイアウトモデル</label>
+      <select id="model">
+        <option value="spring" selected>Spring(d3-force 風)</option>
+        <option value="eades">Eades — Spring Embedder (1984)</option>
+        <option value="fruchterman">Fruchterman–Reingold (1991)</option>
+        <option value="forceatlas2">ForceAtlas2 (2014)</option>
+        <option value="linlog">LinLog — Noack (2007)</option>
+      </select>
+    </div>
     <div class="param">
       <label>リンク距離 <span class="value" id="v-linkDistance"></span></label>
       <input type="range" id="p-linkDistance" min="5" max="150" step="1" value="30">

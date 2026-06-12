@@ -66,8 +66,28 @@ for (let i = 0; i < n * 2; i++) {
   if (!Number.isFinite(lastTick.positions[i])) badAfterParams++;
 }
 console.log(`after params: alpha=${lastTick.alpha.toFixed(3)} non-finite=${badAfterParams}`);
+send({ type: 'params', params: { linkDistance: 30, repulsion: -30, velocityDecay: 0.6 } });
+
+// model test: every layout model must keep positions finite and spread out
+let badModels = 0;
+for (const model of ['eades', 'fruchterman', 'forceatlas2', 'linlog', 'spring']) {
+  send({ type: 'model', model });
+  await new Promise((r) => setTimeout(r, 1200));
+  const p = lastTick.positions;
+  let nf = 0, mnX = Infinity, mxX = -Infinity;
+  for (let i = 0; i < n; i++) {
+    if (!Number.isFinite(p[i * 2]) || !Number.isFinite(p[i * 2 + 1])) nf++;
+    if (p[i * 2] < mnX) mnX = p[i * 2];
+    if (p[i * 2] > mxX) mxX = p[i * 2];
+  }
+  const spread = mxX - mnX;
+  const good = nf === 0 && spread > 50 && spread < 1e6;
+  if (!good) badModels++;
+  console.log(`model ${model.padEnd(12)} non-finite=${nf} x-extent=${spread.toFixed(0)} ${good ? 'ok' : 'NG'}`);
+}
 
 const ok = bad === 0
+  && badModels === 0
   && badAfterParams === 0
   && lastTick.alpha > 0.05
   && maxX - minX > 50

@@ -332,6 +332,33 @@ document.getElementById('resetParams').addEventListener('click', () => {
   sendParams();
 });
 
+// ------------------------------------------------------- layout model menu
+// Sliders that have no effect in a model are greyed out.
+const MODEL_PARAMS = {
+  spring:      ['linkDistance', 'repulsion', 'centerStrength', 'velocityDecay', 'linkStrength'],
+  eades:       ['linkDistance', 'repulsion', 'centerStrength', 'velocityDecay', 'linkStrength'],
+  fruchterman: ['linkDistance', 'repulsion', 'centerStrength', 'linkStrength'],
+  forceatlas2: ['repulsion', 'centerStrength', 'velocityDecay', 'linkStrength'],
+  linlog:      ['repulsion', 'centerStrength', 'velocityDecay', 'linkStrength'],
+};
+
+const modelSel = document.getElementById('model');
+{
+  const m = params.get('model');
+  if (m && MODEL_PARAMS[m]) modelSel.value = m;
+}
+
+function applyModel() {
+  const used = MODEL_PARAMS[modelSel.value];
+  for (const d of PARAM_DEFS) {
+    const active = used.includes(d.key);
+    d.input.disabled = !active;
+    d.input.parentElement.classList.toggle('disabled', !active);
+  }
+  worker.postMessage({ type: 'model', model: modelSel.value });
+}
+modelSel.addEventListener('change', applyModel);
+
 // ---------------------------------------------------------------- rendering
 function resize() {
   const dpr = window.devicePixelRatio || 1;
@@ -601,6 +628,7 @@ async function init() {
     g = generateDefault();
   }
   setGraph(g);
+  applyModel(); // reflect ?model= and initial slider availability
 }
 
 init();
